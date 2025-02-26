@@ -1,6 +1,13 @@
 '''
 by Lukas Chrostowski, 2025
 written with the help of ChatGPT 4.o
+
+To run:
+
+> pip install xxx
+
+where xxx is each of the packages below
+
 '''
 
 import os
@@ -16,7 +23,7 @@ from SiEPIC.utils import find_automated_measurement_labels
 import matplotlib.pyplot as plt
 import scipy.io
 import sys
-from PyQt6.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QListWidget, QLabel, QTabWidget, QScrollArea, QPushButton, QTextEdit
+from PyQt6.QtWidgets import QApplication, QDialog, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QListWidget, QLabel, QTabWidget, QScrollArea, QPushButton, QTextEdit, QComboBox
 from PyQt6.QtGui import QPixmap
 from PyQt6.QtCore import Qt
 import matplotlib.pyplot as plt
@@ -29,6 +36,75 @@ CONST_NoiseFloor = -50  # only plot files that exceed the measurement noise floo
 matches example:
 ['/Users/lukasc/Documents/GitHub/openEBL-2024-10/measurements/mat_files/Lukas_data_2024T3/LukasChrostowski_MZI1/09-Nov-2024 06.05.22.mat', {'opt_in': 'opt_in_TE_1550_device_LukasChrostowski_MZI1', 'x': 673, 'y': 4322, 'pol': 'TE', 'wavelength': '1550', 'type': 'device', 'deviceID': 'LukasChrostowski', 'params': ['MZI1'], 'Text': ('opt_in_TE_1550_device_LukasChrostowski_MZI1',r0 673000,4322000)}]
 '''
+
+
+class FolderSelectionDialog(QDialog):
+    def __init__(self, directory):
+        super().__init__()
+
+        self.selected_folder = None  # Store the selected folder
+        self.setWindowTitle("Select a Folder")
+        self.setMinimumWidth(300)
+
+        # Get list of folders in the directory
+        self.folders = [f for f in os.listdir(directory) if os.path.isdir(os.path.join(directory, f))]
+
+        # Create GUI elements
+        layout = QVBoxLayout()
+        layout.addWidget(QLabel("Select a folder:"))
+
+        self.combo_box = QComboBox()
+        self.combo_box.addItems(self.folders)
+        layout.addWidget(self.combo_box)
+
+        ok_button = QPushButton("OK")
+        ok_button.clicked.connect(self.accept_selection)
+        layout.addWidget(ok_button)
+
+        self.setLayout(layout)
+
+    def accept_selection(self):
+        """ Store the selected folder and close the dialog. """
+        self.selected_folder = self.combo_box.currentText()
+        self.accept()  # Closes the dialog
+
+class NameEntryDialog(QDialog):
+    def __init__(self):
+        super().__init__()
+
+        self.entered_name = None  # Store the user input
+        self.setWindowTitle("Enter a Name")
+        self.setMinimumWidth(300)
+
+        # Create GUI elements
+        layout = QVBoxLayout()
+        layout.addWidget(QLabel("Enter a name:"))
+
+        self.line_edit = QLineEdit()
+        layout.addWidget(self.line_edit)
+
+        ok_button = QPushButton("OK")
+        ok_button.clicked.connect(self.accept_input)
+        layout.addWidget(ok_button)
+
+        self.setLayout(layout)
+
+    def accept_input(self):
+        """ Store the entered name and close the dialog. """
+        self.entered_name = self.line_edit.text()
+        self.accept()  # Closes the dialog
+
+def select_folder(directory):
+    """ Open the folder selection dialog and return the selected folder. """
+    dialog = FolderSelectionDialog(directory)
+    result = dialog.exec()
+    return dialog.selected_folder if result == QDialog.DialogCode.Accepted else None
+
+def enter_name():
+    """ Open the name entry dialog and return the entered name. """
+    dialog = NameEntryDialog()
+    result = dialog.exec()
+    return dialog.entered_name if result == QDialog.DialogCode.Accepted else None
 
 class TabbedGUI(QMainWindow):
     def __init__(self, layout, matches):
@@ -141,7 +217,7 @@ class TabbedGUI(QMainWindow):
                 self.plot_mat_data(mat_file_path, selected_key, len(selected_items)>1)
                 self.display_klayout_cell_image(selected_key, width=self.scrollArea.width()*0.99)
                 opt_in_selection_text=[self.matches[selected_key][1]['opt_in']]
-                print(opt_in_selection_text)
+                print(f" - Opt-in: {opt_in_selection_text}, {mat_file_path}")
                 try:
                     text_subckt, text_main, *_ = self.cell.spice_netlist_export(opt_in_selection_text=opt_in_selection_text)
 #                    print(text_subckt, text_main)
@@ -236,6 +312,11 @@ class TabbedGUI(QMainWindow):
             self.imageLabel.setText("Cell not found in layout")
             self.cell = None
         return None
+
+def show_main_GUI(directory):
+    """ Open the main dialog. """
+    dialog = TabbedGUI(directory)
+    result = dialog.exec_()
 
 def draw_right_facing_arrow(cell, layer, trans=pya.Trans()):
     """
@@ -425,18 +506,28 @@ if __name__ == "__main__":
             print(f"Error: {e}")
 
     if 1:
-        layout, labels = load_layout_and_extract_labels()
-        mat_path = os.path.join(script_dir,'mat_files')
-        matches = match_files_with_labels(mat_path, labels)
-        '''
-        for m in matches:
-            if 'MZI1' in m:
-                print(matches[m])
-                #analyze_mat_file(matches[m][0],m)
-        '''     
         app = QApplication(sys.argv)
-        window = TabbedGUI(layout, matches)
-        window.show()
+
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        mat_path = os.path.join(script_dir,'mat_files')
+        selected_folder = os.path.join(mat_path,select_folder(mat_path))
+        
+        if selected_folder:
+            print(f"Selected folder: {selected_folder}")
+
+            layout, labels = load_layout_and_extract_labels()
+            matches = match_files_with_labels(selected_folder, labels)
+            '''
+            for m in matches:
+                if 'MZI1' in m:
+                    print(matches[m])
+                    #analyze_mat_file(matches[m][0],m)
+            '''     
+            window = TabbedGUI(layout, matches)
+            window.show()
+        else:
+            print("No folder selected.")
+
         sys.exit(app.exec())
 
     if 0:

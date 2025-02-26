@@ -149,7 +149,7 @@ def copy_mat_files(source_dir, destination_dir):
 
 if __name__ == "__main__":
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    if 1:
+    if 0:
         # Download, extract, copy .mat files
         try:
             url = extract_measurement_url()
@@ -162,11 +162,12 @@ if __name__ == "__main__":
         except Exception as e:
             print(f"Error: {e}")
 
-    if 0:        
+    if 1:        
         # Download, extract, copy .mat files
         try:
             url = "https://stratus.ece.ubc.ca/s/kfHwqfkcxNEMgXs/download"  # Test URL
-            print(f"Using test URL: {url}")
+            url = "https://qdot-nexus.phas.ubc.ca:25683/s/7tXJJJXcty36TFY/download"  # second chip, Sheri, 2025/02/26
+            print(f"Using URL: {url}")
             download_path = os.path.join(script_dir,'downloaded')
             filename = download_file(url, output_dir=download_path)
             mat_path = os.path.join(script_dir,'mat_files')
