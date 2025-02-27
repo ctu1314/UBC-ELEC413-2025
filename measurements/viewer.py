@@ -23,7 +23,7 @@ from SiEPIC.utils import find_automated_measurement_labels
 import matplotlib.pyplot as plt
 import scipy.io
 import sys
-from PyQt6.QtWidgets import QApplication, QDialog, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QListWidget, QLabel, QTabWidget, QScrollArea, QPushButton, QTextEdit, QComboBox
+from PyQt6.QtWidgets import QApplication, QDialog, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QListWidget, QLabel, QTabWidget, QScrollArea, QPushButton, QTextEdit, QComboBox, QSizePolicy
 from PyQt6.QtGui import QPixmap
 from PyQt6.QtCore import Qt
 import matplotlib.pyplot as plt
@@ -126,7 +126,6 @@ class TabbedGUI(QMainWindow):
         # List Widget on the Left
         left_layout = QVBoxLayout()
         self.listWidget = QListWidget()
-        #self.listWidget.setSelectionMode(QListWidget.SelectionMode.MultiSelection)
         self.listWidget.setSelectionMode(QListWidget.SelectionMode.SingleSelection)
         for item in sorted(self.matches.keys(), key=str.casefold):
             self.listWidget.addItem(item)
@@ -142,17 +141,24 @@ class TabbedGUI(QMainWindow):
         # Tabs on the Right
         self.tabs = QTabWidget()
         
-        # Tab 2: Image
+        # Tab 2: Layout
         self.tab2 = QWidget()
         self.scrollArea = QScrollArea()
+
+        self.layout_text = QTextEdit("Click on a label on the left to display.")
+        self.layout_text.setReadOnly(True)
+        self.layout_text.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.layout_text.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)  # Allow horizontal scrolling
+        self.layout_text.setFixedHeight(40)  # Adjust height as needed
+        self.layout_text.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)  # Expand horizontally
         self.imageLabel = QLabel("Select an item to display an image")
         self.imageLabel.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.scrollArea.setWidget(self.imageLabel)
         self.scrollArea.setWidgetResizable(True)
         layout2 = QVBoxLayout()
+        layout2.addWidget(self.layout_text)  # Add text line above the image
         layout2.addWidget(self.scrollArea)
         self.tab2.setLayout(layout2)
-        self.display_klayout_cell_image(self.layout.top_cell().name, self.layout.top_cell()) #, width=self.scrollArea.width()*0.99)
         
         # Tab 3: Data Plot
         self.tab3 = QWidget()
@@ -176,7 +182,7 @@ class TabbedGUI(QMainWindow):
         self.tab4.setLayout(layout4)
         
         # Add tabs to the main layout
-        self.tabs.addTab(self.tab2, "Image")
+        self.tabs.addTab(self.tab2, "Layout")
         self.tabs.addTab(self.tab3, "Plot")
         self.tabs.addTab(self.tab4, "Netlist")
         main_layout.addWidget(self.tabs, 3)  # Takes 3 parts of the space
@@ -251,7 +257,7 @@ class TabbedGUI(QMainWindow):
         rows_data = test_result_inner["rows"]
         rows_inner = rows_data[0, 0]
         wavelengths = test_result[0][0][0]['wavelength'].flatten()[0]
-        
+               
         for i in range(1, 5):
             channel_key = f"channel_{i}"
             if channel_key in rows_inner.dtype.names:
@@ -281,7 +287,10 @@ class TabbedGUI(QMainWindow):
         for m in self.matches:
             if cell_name == m:
                 cell = find_text_label(layout, layer_optin, self.matches[m][1]['opt_in'])
-#                print(f"is cell const object? 2 {cell._is_const_object()}")
+                cell_tree = trace_hierarchy_up_single(layout, cell)
+                layout_text = " → ".join(cell.name for cell in cell_tree) + '\n' + self.matches[m][1]['opt_in']
+                print(layout_text)
+                self.layout_text.setText(layout_text)
                 break
         if cell:
             # draw an arrow
@@ -412,19 +421,50 @@ def match_files_with_labels(mat_files_dir, labels):
         dict: A mapping of labels to matching .mat files.
     """
     matches = {}
-    for root, _, files in os.walk(mat_files_dir):
-        for label in labels[1]:
-            device_id = label.get('deviceID', '')
-            params = "_".join(label.get('params', []))
-            expected_folder_start = f"{device_id}_{params}".strip('_')
+    matched_labels = []
+    optin_count = 0
+    unmatched_file_count = 0
+    folder_count = 0
+    for root, dirs, files in os.walk(mat_files_dir):
+        file_matched = False
+        # only look at folders that have no child folders
+        if not dirs:
+            folder_count += 1
+            for label in labels[1]:
+                if 'opt_in' in label.keys():
+                    device_type = label.get('type', '')
+                    device_id = label.get('deviceID', '')
+                    params = "_".join(label.get('params', []))
+                    # The _comment is added by SiEPIC.utils.find_automated_measurement_labels
+                    if params == 'comment':
+                        params = ''
+                    expected_folder_start = f"{device_id}_{params}".strip('_')
 
-            if os.path.basename(root).startswith(expected_folder_start):
-                for file in files:
-                    if file.endswith(".mat"):
-                        matches.setdefault(expected_folder_start, []).append(os.path.join(root, file))
-                        matches[expected_folder_start].append(label)
+                    if os.path.basename(root).startswith(expected_folder_start):
+                        for file in files:
+                            if file.endswith(".mat"):
+                                dev_name = f"{device_type}_{device_id}_{params}".strip('_')
+                                matches.setdefault(dev_name, []).append(os.path.join(root, file))
+                                matches[dev_name].append(label)
+                                optin_count += 1
+                                matched_labels.append(label) 
+                                file_matched = True
+            if not file_matched:
+                print(f" - unmatched folder: {os.path.relpath(root, mat_files_dir)}")                  
+                unmatched_file_count += 1
+
+    optin_all = [m['opt_in'] for m in labels[1] if 'opt_in' in m]
+    optin_matched = [m['opt_in'] for m in matched_labels if 'opt_in' in m]
+    optin_unmatched = list(set(optin_all) - set(optin_matched))
     
-    print(f"Matched files: {len(matches)}")
+    print(f"Unmatched labels: ")
+    print("\n - missing data: ".join(optin_unmatched))
+    print(f" Summary of loaded measurement data: ")
+
+    print(f" - Unmatched labels: {len(optin_unmatched)} ({len(optin_unmatched)/len(optin_all):.1%}), total labels: {len(labels[1])}")
+    print(f" - Unmatched files: {unmatched_file_count}, total folders: {folder_count}")
+    print(f" - Matched labels & files: {len(matches)}")
+
     return matches
 
 def analyze_mat_file(mat_file_path, opt_in_name=''):
@@ -455,6 +495,38 @@ def analyze_mat_file(mat_file_path, opt_in_name=''):
     plt.grid(True)
     plt.show()
 
+
+def find_parents(layout, target_cell):
+    """
+    Find all parent cells that instantiate the target cell.
+    """
+    parents = []
+    for cell in layout.each_cell():
+        for inst in cell.each_inst():
+            if inst.cell == target_cell:
+                parents.append(cell)
+                break
+    return parents
+
+def trace_hierarchy_up_single(layout, bottom_cell, path=None):
+    """
+    Recursively trace the hierarchy upwards from the bottom cell to the top cell.
+    Returns a single path as a list of Cell objects.
+    """
+    if path is None:
+        path = [bottom_cell]
+
+    parents = find_parents(layout, bottom_cell)
+    if not parents:
+        # No parents found, we've reached the top cell
+        return path[::-1]  # Reverse the path to start from the top cell
+
+    if len(parents) > 1:
+        raise ValueError(f"Cell '{bottom_cell.name}' has multiple parent instances. Use the multi-path version.")
+
+    # If only one parent, continue tracing
+    return trace_hierarchy_up_single(layout, parents[0], path + [parents[0]])
+          
 
 def find_text_label(layout, layer_name, target_text):
     """
