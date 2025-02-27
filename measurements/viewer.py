@@ -288,7 +288,9 @@ class TabbedGUI(QMainWindow):
             if cell_name == m:
                 cell = find_text_label(layout, layer_optin, self.matches[m][1]['opt_in'])
                 cell_tree = trace_hierarchy_up_single(layout, cell)
-                layout_text = " → ".join(cell.name for cell in cell_tree) + '\n' + self.matches[m][1]['opt_in']
+                layout_text = " → ".join(cell.name for cell in cell_tree) \
+                    + '\n' + self.matches[m][1]['opt_in'] \
+                    + '\n' + self.matches[m][0]
                 print(layout_text)
                 self.layout_text.setText(layout_text)
                 break
