@@ -8,12 +8,12 @@
   - Single full etch, using a positive resist
   - Air cladding
   - Laser integration
-- Process Design Kit: [SiEPIC-EBeam-PDK](https://github.com/SiEPIC/SiEPICfab-EBeam-ZEP-PDK)
+- Process Design Kit: [SiEPICfab-EBeam-ZEP-PDK](https://github.com/SiEPIC/SiEPICfab-EBeam-ZEP-PDK)
 
 
 # Submission instructions:
 
-The submission involves several steps. First, you need to create your design(s) using the process design kit (PDK) for this specific fabrication run. Then you need to create a Fork of this repository, commit your design(s), ensure that it passes the checks, and create a pull request. Once your pull request is approved, your design(s) will be merged into the layout for fabrication. You should verify that your design is correctly merged. Once the designs are fabricated, they will be tested, and the measurement results will be posted in this repository.
+The submission involves several steps. First, you need to create your design(s) using the process design kit (PDK) for this specific fabrication run. Then you need to create a Fork of this repository, commit your design(s), ensure that it passes the checks, and create a pull request. Once your pull request is approved, your design(s) will be aggregated into the layout for fabrication. You should verify that your design is correctly aggregated. Once the designs are fabricated, they will be tested, and the measurement results will be posted in this repository.
 
 ## Design software and PDK installation instructions:
  - Design tools and process design kit installation instructinos
@@ -44,7 +44,7 @@ The submission involves several steps. First, you need to create your design(s) 
 - Alternatively upload your Python file, which will be compiled by a GitHub Action.  
    - For KLayout designs, use the "submissions/KLayout Python" folder, namely a .py (Python format) file.  e.g., EBeam_LukasChrostowski_MZI.py.  The Python file should save a gds or oas file into the parent "submissions" folder. The Python script needs to be executable in non-GUI mode, namely using "import klayout SiEPIC SiEPIC-EBeam-PDK"
  - Create a <a href="https://help.github.com/articles/using-pull-requests/">Pull Request</a> -- this will notify the team of your contribution, which we can aggregate into the main design file
- - Return to the main repository, and ensure that your design is correctly merged. Download the Latest Merge file, below.
+ - Return to the main repository, and ensure that your design is correctly aggregated. Download the Latest Aggregated file, below.
 
 <img width="1281" alt="image" src="https://github.com/SiEPIC/openEBL-2024-02/assets/15843200/e4785a27-b971-4a64-8796-1e351f30c00e">
 
@@ -57,13 +57,16 @@ The verification and merging is performed using GitHub actions. The repository i
 1) Running the Python files in the "submissions/KLayout Python" folder, to generate the designs
 2) Performing Manufacturing DRC verification on the designs in the "submissions" folder, and outputing the errors as an Artifact
 3) Performing Functional verification on the designs in the "submissions" folder, and outputing the errors as an Artifact
-4) Merging the designs from the "submissions" folder, and outputing merged layout as an Artifact in the main repository
+4) Aggregation of the designs from the "submissions" folder, and outputing aggregated layout as an Artifact in the main repository
 
-## Latest Merge Layout File
+## Measurement data
+https://qdot-nexus.phas.ubc.ca:25683/s/7SSDdRLHw7fAaN8
 
-<img alt="Merged Layout" src="./merge/EBeam.png">
+## Latest Aggregated Layout File
 
-Click on the following link to download the EBeam.oas merged layout file:
+<img alt="Aggregated Layout" src="./aggregate/Shuksan.png">
+
+Click on the following link to download the Shuksan.oas aggregated layout file:
 <!-- start-link -->
-https://github.com/SiEPIC/UBC-ELEC413-2025/actions/runs/13253209626/artifacts/2568431237
+https://github.com/SiEPIC/UBC-ELEC413-2025/actions/runs/13428126278/artifacts/2621151895
 <!-- end-link -->
